@@ -8,6 +8,9 @@ from mujoco_worldgen.util.types import store_args
 from ma_policy.util import listdict2dictnp
 
 
+import uuid
+
+
 def splitobs(obs, keepdims=True):
     '''
         Split obs into list of single agent obs.
@@ -72,6 +75,10 @@ class PolicyViewer(MjViewer):
             self.end_time = time.time() + self.duration
         self.total_rew_avg = 0.0
         self.n_episodes = 0
+
+        fname = "hide_seek_trace" + str(uuid.uuid4().hex[:8]) + ".npy"
+        fout = open(fname, "wb")
+
         while self.duration is None or time.time() < self.end_time:
             if len(self.policies) == 1:
                 action, _ = self.policies[0].act(self.ob)
@@ -83,23 +90,42 @@ class PolicyViewer(MjViewer):
                     inp = itemgetter(*ob_policy_idx[i])(self.ob)
                     inp = listdict2dictnp([inp] if ob_policy_idx[i].shape[0] == 1 else inp)
                     ac, info = policy.act(inp)
+
+                    # print("policy info is", info)
+
                     actions.append(ac)
                 action = listdict2dictnp(actions, keepdims=True)
 
             self.ob, rew, done, env_info = self.env.step(action)
             self.total_rew += rew
 
+            np.save(fout, self.ob)
+
+            first_agent_x_y = self.ob['observation_self'][0][:2]
+
             if done or env_info.get('discard_episode', False):
+                # print("DONE DONE DONE DONE")
+                fout.close()
+                fname = "hide_seek_trace" + str(uuid.uuid4().hex[:8]) + ".npy"
+                fout = open(fname, "wb")
                 self.reset_increment()
 
             if self.display_window:
-                self.add_overlay(const.GRID_TOPRIGHT, "Reset env; (current seed: {})".format(self.seed), "N - next / P - previous ")
+                self.add_overlay(const.GRID_TOPRIGHT, "Reset env; (policy current seed: {})".format(self.seed), "N - next / P - previous ")
                 self.add_overlay(const.GRID_TOPRIGHT, "Reward", str(self.total_rew))
+                # self.add_overlay(const.GRID_TOPRIGHT, "Reward", str(self.total_rew))
+                self.add_overlay(const.GRID_TOPRIGHT, "Agent 1", "{}".format(first_agent_x_y))
+                self.add_overlay(const.GRID_TOPRIGHT, "Agent 2", "{}".format(self.ob['observation_self'][1][:2]))
+                self.add_overlay(const.GRID_TOPRIGHT, "Agent 3", "{}".format(self.ob['observation_self'][2][:2]))
+                self.add_overlay(const.GRID_TOPRIGHT, "Agent 4", "{}".format(self.ob['observation_self'][3][:2]))
+
                 if hasattr(self.env.unwrapped, "viewer_stats"):
                     for k, v in self.env.unwrapped.viewer_stats.items():
                         self.add_overlay(const.GRID_TOPRIGHT, k, str(v))
 
                 self.env.render()
+
+            # fout.close()
 
     def reset_increment(self):
         self.total_rew_avg = (self.n_episodes * self.total_rew_avg + self.total_rew) / (self.n_episodes + 1)
