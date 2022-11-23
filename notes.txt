@@ -1,0 +1,37 @@
+sudo apt install build-essential
+libgl1-mesa-dev
+libgl1-mesa-glx
+libosmesa6-dev
+
+conda create --name qrlenv
+conda activate qrlenv
+
+conda install python=3.7
+
+mkdir ~/.mujoco
+cd ~/.mujoco
+
+wget https://www.roboti.us/file/mjkey.txt
+wget https://www.roboti.us/download/mjpro150_linux.zip
+
+unzip mjpro150_linux.zip
+
+
+pip install scipy==1.3.1
+
+
+Now there's an issue when installing mujoco-py at this point
+There's a file in ~/miniconda3/envs/qrlenv/lib/libstdc++.so.6 that's out of date,
+so delete it and whatever was looking for it will just use the update to date global system version
+
+
+pip install mujoco-py==1.50.1
+
+
+cd ~/qrl/mujoco-worldgen
+pip install -r requirements.txt
+pip install -e .
+
+
+cd ~/qrl/multi-agent-emeregence-environments
+pip install -e .
